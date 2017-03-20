@@ -1,5 +1,4 @@
 # 0217-Services-and-Security
-=================================
 
 In this repository you will find code examples for the Services and Security module.
 
