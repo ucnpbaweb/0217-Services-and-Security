@@ -2,21 +2,13 @@ var Notes = (() => {
 	var notes = [];
 	var version = 'v1';
 
-	var req = (callback, method, url, customevent, content) => {
+	var req = async (method, url, content) => {
 		//create a new request
 		var request = new Request(url, {method : method, body : (content)?content:null});
-
-		fetch(request).then((response) => {
-			//return the content of the response
-			return response.json();
-		}).then((content) => {
-			// create a custom event
-			callback(content);
-			var event = new CustomEvent(customevent, {
-				'detail': content
-			});
-			document.dispatchEvent(event);
-		});
+		// wait for the response
+		var response = await fetch(request);
+		// wait for the content of the response and return it
+		return await response.json();
 	};
 
 	var addAllNotes = (response) => {
@@ -54,17 +46,29 @@ var Notes = (() => {
 		find: (id) => {
 			return findNoteById(id);
 		},
-		getAll: (eventName) => {
-			req(addAllNotes, 'GET', version+'/notes', eventName);
+		getAll: () => {
+			return req('GET', version+'/notes').then(resp => {
+				addAllNotes(resp);
+				return resp;
+			});
 		},
-		add: (note, eventName) => {
-			req(addNewNote, 'POST', version+'/notes', eventName, JSON.stringify(note));
+		add: (note) => {
+			return req('POST', version+'/notes', JSON.stringify(note)).then(resp => {
+				addNewNote(resp);
+				return resp;
+			});
 		},
-		update: (note, eventName) => {
-			req(updateNote, 'PUT', version+'/notes/'+note.id, eventName, JSON.stringify(note));
+		update: (note) => {
+			return req('PUT', version+'/notes/'+note.id, JSON.stringify(note)).then(resp => {
+				updateNote(resp);
+				return resp;
+			});
 		},
-		delete: (id, eventName) => {
-			req(deleteNote ,'DELETE', version+'/notes/'+id, eventName);
+		delete: (id) => {
+			return req(deleteNote ,'DELETE', version+'/notes/'+id).then(resp => {
+				deleteNote(resp);
+				return resp;
+			});
 		}
 	};
 

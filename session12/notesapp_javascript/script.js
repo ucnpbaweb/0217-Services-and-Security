@@ -1,17 +1,13 @@
-var notesElm, menuElm;
-var notes;
-
 var noteTemplate = (note) => {
 	var content = note.content.replace(/(?:\r\n|\r|\n)/g, '<br/>');
 	return `<div class="note" data-id="${note.id}">
-				<a data-id="${note.id}" href="edit">Edit</a>
-				<a data-id="${note.id}" href="delete">Delete</a>
+				<a href="edit">Edit</a>
+				<a href="delete">Delete</a>
 				<div class="content">${content}</div>
 			</div>`;
 };
 
-var displayAllNotes = (e) => {
-	var notes = e.detail.notes;
+var displayAllNotes = (notesElm, notes) => {
 	var notesHtml = '';
 	notes.forEach((note) => {
 		notesHtml += noteTemplate(note);
@@ -19,27 +15,28 @@ var displayAllNotes = (e) => {
 	notesElm.innerHTML = notesHtml;
 };
 
-var displayNewNote = (e) => {
-	var note = e.detail.note;
+var displayNewNote = (notesElm, note) => {
 	notesElm.innerHTML += noteTemplate(note);
 };
 
-var displayUpdatedNote = (e) => {
-	var note = e.detail.note;
-	var noteElm = notesElm.querySelector('div[data-id = "'+note.id+'"]');
+var displayUpdatedNote = (noteElm, note) => {
 	noteElm.outerHTML = noteTemplate(note);
 };
 
-var displayDeletedNote = (e) => {
-	var id = e.detail.id;
-	notesElm.querySelector('div[data-id = "'+id+'"]').outerHTML = '';
+var displayDeletedNote = (noteElm) => {
+	noteElm.outerHTML = '';
 };
 
 var submitNewNote = (e) => {
 	e.preventDefault();
+	var notesElm = document.getElementById('notes');
 	var newnote = {};
 	newnote.content = e.target.content.value;
-	Notes.add(newnote, 'notecreated');
+
+	Notes.add(newnote).then(resp => {
+		displayNewNote(notesElm, resp.note);
+	});
+
 	e.target.reset();
 	e.target.classList.add('hide');
 };
@@ -50,7 +47,9 @@ var submitUpdateNote = (e) => {
 		id: e.target.id.value,
 		content: e.target.content.value
 	};
-	Notes.update(note, 'noteupdated');
+	Notes.update(note).then(resp => {
+		displayUpdatedNote(e.target.targetElement, resp.note);
+	});
 	
 	e.target.reset();
 	e.target.classList.add('hide');
@@ -58,21 +57,24 @@ var submitUpdateNote = (e) => {
 
 var noteElmClicked = (e) => {
 	if(e.target.nodeName == 'A'){
+		console.log(e);
 		e.preventDefault();
 		var action = e.target.attributes['href'].value;
+		var noteElm = e.target.parentNode;
+		var id = parseInt(noteElm.attributes['data-id'].value);
 		switch(action){
 			case 'edit':
-				var id = parseInt(e.target.attributes['data-id'].value);
-
 				var note = Notes.find(id);
 
 				document.forms.updatenote.content.value = note.content;
 				document.forms.updatenote.id.value = note.id;
 				document.forms.updatenote.classList.remove('hide');
+				document.forms.updatenote.targetElement = noteElm;
 				break;
 			case 'delete':
-				var id = parseInt(e.target.attributes['data-id'].value);
-				Notes.delete(id, 'notedeleted');
+				Notes.delete(id).then(resp => {
+					displayDeletedNote(noteElm);
+				});
 				break;
 		}
 	}
@@ -105,14 +107,8 @@ var formClicked = (e) => {
 
 window.addEventListener('load', () => {
 	//elements
-	notesElm = document.getElementById('notes');
-	menuElm = document.querySelector('body > nav');
-
-	// events for user interface
-	document.addEventListener('notesreceived', displayAllNotes, false);
-	document.addEventListener('notecreated', displayNewNote, false);
-	document.addEventListener('noteupdated', displayUpdatedNote, false);
-	document.addEventListener('notedeleted', displayDeletedNote, false);
+	var notesElm = document.getElementById('notes');
+	var menuElm = document.querySelector('body > nav');
 
 	notesElm.addEventListener('click', noteElmClicked, false);
 	menuElm.addEventListener('click', menuClicked, false);
@@ -124,5 +120,7 @@ window.addEventListener('load', () => {
 	document.forms.newnote.addEventListener('click', formClicked, false);
 
 	//get all the notes
-	Notes.getAll('notesreceived');
+	Notes.getAll().then(resp => {
+		displayAllNotes(notesElm, resp.notes);
+	});
 }, false);
